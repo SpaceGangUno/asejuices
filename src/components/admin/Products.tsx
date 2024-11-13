@@ -1,30 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X } from 'lucide-react';
 import { getProducts, addProduct, updateProduct, deleteProduct } from '../../services/firestore';
+import { Product } from '../../types/models';
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  stock: number;
-  category: string;
-}
+type ProductFormData = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
+
+const defaultFormData: ProductFormData = {
+  name: '',
+  description: '',
+  price: 0,
+  category: '',
+  image: '',
+  benefits: [],
+  ingredients: [],
+  nutrition: {
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fiber: 0
+  },
+  tags: [],
+  inStock: true
+};
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState<Omit<Product, 'id'>>({
-    name: '',
-    price: 0,
-    description: '',
-    stock: 0,
-    category: ''
-  });
+  const [formData, setFormData] = useState<ProductFormData>(defaultFormData);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch products on component mount
   useEffect(() => {
     loadProducts();
   }, []);
@@ -42,19 +47,24 @@ export default function Products() {
 
   const handleAddProduct = () => {
     setEditingProduct(null);
-    setFormData({
-      name: '',
-      price: 0,
-      description: '',
-      stock: 0,
-      category: ''
-    });
+    setFormData(defaultFormData);
     setIsModalOpen(true);
   };
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
-    setFormData(product);
+    setFormData({
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      category: product.category,
+      image: product.image,
+      benefits: product.benefits,
+      ingredients: product.ingredients,
+      nutrition: product.nutrition,
+      tags: product.tags,
+      inStock: product.inStock
+    });
     setIsModalOpen(true);
   };
 
@@ -62,7 +72,7 @@ export default function Products() {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
         await deleteProduct(productId);
-        await loadProducts(); // Reload products after deletion
+        await loadProducts();
       } catch (error) {
         console.error('Error deleting product:', error);
       }
@@ -73,17 +83,22 @@ export default function Products() {
     e.preventDefault();
     try {
       if (editingProduct) {
-        // Update existing product
         await updateProduct(editingProduct.id, formData);
       } else {
-        // Add new product
         await addProduct(formData);
       }
-      await loadProducts(); // Reload products after update/add
+      await loadProducts();
       setIsModalOpen(false);
     } catch (error) {
       console.error('Error saving product:', error);
     }
+  };
+
+  const handleArrayInput = (field: 'benefits' | 'ingredients' | 'tags', value: string) => {
+    setFormData({
+      ...formData,
+      [field]: value.split(',').map(item => item.trim())
+    });
   };
 
   if (isLoading) {
@@ -118,7 +133,7 @@ export default function Products() {
                 Price
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Stock
+                Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
@@ -145,7 +160,7 @@ export default function Products() {
                   ${product.price.toFixed(2)}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">
-                  {product.stock}
+                  {product.inStock ? 'In Stock' : 'Out of Stock'}
                 </td>
                 <td className="px-6 py-4 text-sm font-medium">
                   <div className="flex space-x-3">
@@ -172,7 +187,7 @@ export default function Products() {
       {/* Add/Edit Product Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-900">
                 {editingProduct ? 'Edit Product' : 'Add New Product'}
@@ -185,78 +200,185 @@ export default function Products() {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
+              {/* Basic Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Name</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Category</label>
+                  <input
+                    type="text"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Category
-                </label>
-                <input
-                  type="text"
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Price</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Image URL</label>
+                  <input
+                    type="text"
+                    value={formData.image}
+                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Price
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={(e) =>
-                    setFormData({ ...formData, price: parseFloat(e.target.value) })
-                  }
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Stock
-                </label>
-                <input
-                  type="number"
-                  value={formData.stock}
-                  onChange={(e) =>
-                    setFormData({ ...formData, stock: parseInt(e.target.value) })
-                  }
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Description</label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   rows={3}
                   required
                 />
               </div>
-              <div className="flex justify-end space-x-3">
+
+              {/* Lists */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Benefits (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.benefits.join(', ')}
+                    onChange={(e) => handleArrayInput('benefits', e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Ingredients (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.ingredients.join(', ')}
+                    onChange={(e) => handleArrayInput('ingredients', e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  />
+                </div>
+              </div>
+
+              {/* Nutrition Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Nutrition Facts</h3>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-500">Calories</label>
+                      <input
+                        type="number"
+                        value={formData.nutrition.calories}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          nutrition: {
+                            ...formData.nutrition,
+                            calories: parseInt(e.target.value)
+                          }
+                        })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500">Protein (g)</label>
+                      <input
+                        type="number"
+                        value={formData.nutrition.protein}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          nutrition: {
+                            ...formData.nutrition,
+                            protein: parseInt(e.target.value)
+                          }
+                        })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500">Carbs (g)</label>
+                      <input
+                        type="number"
+                        value={formData.nutrition.carbs}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          nutrition: {
+                            ...formData.nutrition,
+                            carbs: parseInt(e.target.value)
+                          }
+                        })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500">Fiber (g)</label>
+                      <input
+                        type="number"
+                        value={formData.nutrition.fiber}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          nutrition: {
+                            ...formData.nutrition,
+                            fiber: parseInt(e.target.value)
+                          }
+                        })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Tags (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.tags.join(', ')}
+                      onChange={(e) => handleArrayInput('tags', e.target.value)}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.inStock}
+                        onChange={(e) => setFormData({ ...formData, inStock: e.target.checked })}
+                        className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">In Stock</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
