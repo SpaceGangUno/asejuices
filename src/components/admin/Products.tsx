@@ -1,33 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X } from 'lucide-react';
-
-// Mock product data
-const initialProducts = [
-  {
-    id: '1',
-    name: 'Green Detox Juice',
-    price: 29.99,
-    description: 'A refreshing blend of green vegetables and fruits',
-    stock: 50,
-    category: 'Detox'
-  },
-  {
-    id: '2',
-    name: 'Immunity Booster',
-    price: 34.99,
-    description: 'Packed with vitamin C and antioxidants',
-    stock: 45,
-    category: 'Immunity'
-  },
-  {
-    id: '3',
-    name: 'Energy Blend',
-    price: 32.99,
-    description: 'Natural energy boost with superfoods',
-    stock: 30,
-    category: 'Energy'
-  }
-];
+import { getProducts, addProduct, updateProduct, deleteProduct } from '../../services/firestore';
 
 interface Product {
   id: string;
@@ -39,7 +12,7 @@ interface Product {
 }
 
 export default function Products() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<Omit<Product, 'id'>>({
@@ -49,6 +22,23 @@ export default function Products() {
     stock: 0,
     category: ''
   });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch products on component mount
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      const fetchedProducts = await getProducts();
+      setProducts(fetchedProducts);
+    } catch (error) {
+      console.error('Error loading products:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleAddProduct = () => {
     setEditingProduct(null);
@@ -68,31 +58,37 @@ export default function Products() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      setProducts(products.filter((p) => p.id !== productId));
+      try {
+        await deleteProduct(productId);
+        await loadProducts(); // Reload products after deletion
+      } catch (error) {
+        console.error('Error deleting product:', error);
+      }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingProduct) {
-      // Update existing product
-      setProducts(
-        products.map((p) =>
-          p.id === editingProduct.id ? { ...formData, id: p.id } : p
-        )
-      );
-    } else {
-      // Add new product
-      const newProduct = {
-        ...formData,
-        id: Date.now().toString()
-      };
-      setProducts([...products, newProduct]);
+    try {
+      if (editingProduct) {
+        // Update existing product
+        await updateProduct(editingProduct.id, formData);
+      } else {
+        // Add new product
+        await addProduct(formData);
+      }
+      await loadProducts(); // Reload products after update/add
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Error saving product:', error);
     }
-    setIsModalOpen(false);
   };
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">

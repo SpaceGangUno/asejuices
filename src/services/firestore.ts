@@ -19,23 +19,37 @@ interface Product {
   name: string;
   price: number;
   description: string;
+  stock: number;
+  category: string;
 }
 
 // Mock data store
 const mockUsers: { [key: string]: User } = {};
 const mockOrders: Order[] = [];
-const mockProducts: Product[] = [
+let mockProducts: Product[] = [
   {
     id: '1',
-    name: 'Sample Product 1',
+    name: 'Green Detox Juice',
     price: 29.99,
-    description: 'A sample product description'
+    description: 'A refreshing blend of green vegetables and fruits',
+    stock: 50,
+    category: 'Detox'
   },
   {
     id: '2',
-    name: 'Sample Product 2',
-    price: 39.99,
-    description: 'Another sample product description'
+    name: 'Immunity Booster',
+    price: 34.99,
+    description: 'Packed with vitamin C and antioxidants',
+    stock: 45,
+    category: 'Immunity'
+  },
+  {
+    id: '3',
+    name: 'Energy Blend',
+    price: 32.99,
+    description: 'Natural energy boost with superfoods',
+    stock: 30,
+    category: 'Energy'
   }
 ];
 
@@ -62,8 +76,29 @@ export async function getOrders(userId: string): Promise<Order[]> {
   return mockOrders.filter(order => order.userId === userId);
 }
 
+// Product CRUD operations
 export async function getProducts(): Promise<Product[]> {
   return mockProducts;
+}
+
+export async function addProduct(productData: Omit<Product, 'id'>): Promise<string> {
+  const productId = `product-${Date.now()}`;
+  const newProduct: Product = {
+    ...productData,
+    id: productId
+  };
+  mockProducts.push(newProduct);
+  return productId;
+}
+
+export async function updateProduct(productId: string, updates: Partial<Product>): Promise<void> {
+  mockProducts = mockProducts.map(product => 
+    product.id === productId ? { ...product, ...updates } : product
+  );
+}
+
+export async function deleteProduct(productId: string): Promise<void> {
+  mockProducts = mockProducts.filter(product => product.id !== productId);
 }
 
 export async function updateUser(userId: string, updates: Partial<User>): Promise<void> {
