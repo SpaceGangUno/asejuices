@@ -1,20 +1,15 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  User,
-  signInWithPopup,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  GoogleAuthProvider,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  updateProfile,
-  sendEmailVerification
-} from 'firebase/auth';
-import { auth, googleProvider } from '../config/firebase';
-import * as firestoreService from '../services/firestore';
+import React, { createContext, useContext, useState } from 'react';
+
+// Mock User type to match Firebase User interface
+interface MockUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  emailVerified: boolean;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: MockUser | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -26,41 +21,19 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        try {
-          const userData = {
-            id: user.uid,
-            email: user.email || '',
-            name: user.displayName || '',
-          };
-          await firestoreService.createUser(user.uid, userData);
-        } catch (error) {
-          console.error('Error updating user data:', error);
-        }
-      }
-      setLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
+  const [user, setUser] = useState<MockUser | null>(null);
+  const [loading] = useState(false);
 
   const signInWithGoogle = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      
-      const userData = {
-        id: user.uid,
-        email: user.email || '',
-        name: user.displayName || '',
+      // Mock Google sign in
+      const mockUser: MockUser = {
+        uid: 'mock-uid-123',
+        email: 'mock@example.com',
+        displayName: 'Mock User',
+        emailVerified: true
       };
-      await firestoreService.createUser(user.uid, userData);
+      setUser(mockUser);
     } catch (error) {
       console.error('Error signing in with Google:', error);
       throw error;
@@ -69,7 +42,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // Mock email sign in
+      const mockUser: MockUser = {
+        uid: 'mock-uid-123',
+        email: email,
+        displayName: 'Mock User',
+        emailVerified: true
+      };
+      setUser(mockUser);
     } catch (error) {
       console.error('Error signing in with email:', error);
       throw error;
@@ -78,22 +58,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUpWithEmail = async (email: string, password: string, name: string) => {
     try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      const user = result.user;
-
-      // Update user profile with name
-      await updateProfile(user, { displayName: name });
-
-      // Send verification email
-      await sendEmailVerification(user);
-
-      // Create user in Firestore
-      const userData = {
-        id: user.uid,
-        email: user.email || '',
-        name: name,
+      // Mock email sign up
+      const mockUser: MockUser = {
+        uid: 'mock-uid-123',
+        email: email,
+        displayName: name,
+        emailVerified: false
       };
-      await firestoreService.createUser(user.uid, userData);
+      setUser(mockUser);
     } catch (error) {
       console.error('Error signing up with email:', error);
       throw error;
@@ -103,7 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sendVerificationEmail = async () => {
     if (user && !user.emailVerified) {
       try {
-        await sendEmailVerification(user);
+        console.log('Mock verification email sent');
+        // Update mock user to be verified
+        setUser({ ...user, emailVerified: true });
       } catch (error) {
         console.error('Error sending verification email:', error);
         throw error;
@@ -113,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await firebaseSignOut(auth);
+      setUser(null);
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
@@ -130,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       sendVerificationEmail
     }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

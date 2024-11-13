@@ -86,7 +86,7 @@ const products: Product[] = [
     category: 'Signature Blends',
     description: 'A balanced blend of fruits and greens for focus and mental clarity.',
     price: 9.99,
-    image: 'https://images.unsplash.com/photo-1638176066666-ffb2f013c7dd?auto=format&fit=crop&q=80',
+    image: '/src/Images/POLYMAILER 2.png',
     benefits: ['Mental Clarity', 'Stress Relief', 'Digestive Health'],
     ingredients: ['Apple', 'Pineapple', 'Spinach', 'Ginger'],
     rating: 4.7,

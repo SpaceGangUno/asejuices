@@ -10,7 +10,7 @@ interface PaymentRequest {
   idempotencyKey: string;
 }
 
-export async function initializePayment(amount: number): Promise<void> {
+export async function createPaymentRequest(amount: number): Promise<any> {
   try {
     const payments = await window.Square.payments(SQUARE_APP_ID, SQUARE_LOCATION_ID);
     const card = await payments.card();
@@ -39,6 +39,7 @@ export async function initializePayment(amount: number): Promise<void> {
     if (result.status === 'OK') {
       // Process payment with token
       console.log('Payment successful:', result.token);
+      return { card, ...result };
     } else {
       throw new Error(result.errors[0].message);
     }
